@@ -218,20 +218,24 @@ def approve_record(request, pk):
 @api_view(['POST'])
 def reject_record(request, pk):
 
-    record = NormalizedRecord.objects.get(id=pk)
+    try:
 
-    record.status = 'REJECTED'
+        record = NormalizedRecord.objects.get(id=pk)
 
-    record.save()
+        record.status = "REJECTED"
 
-    AuditLog.objects.create(
-        record=record,
-        action='Rejected'
-    )
+        record.save()
 
-    return Response({
-        "message": "Record rejected"
-    })
+        return Response({
+            "message": "Record rejected"
+        })
+
+    except NormalizedRecord.DoesNotExist:
+
+        return Response(
+            {"error": "Record not found"},
+            status=404
+        )
 @api_view(['DELETE'])
 def clear_records(request):
 

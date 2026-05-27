@@ -7,4 +7,6 @@ urlpatterns = [
     path('approve/<int:pk>/', approve_record),
     path('upload/utility/', upload_utility),
     path('upload/travel/', upload_travel),
+    path('reject/<int:pk>/', reject_record),
+    path('clear/', clear_records),
 ]
