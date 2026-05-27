@@ -53,18 +53,19 @@ function Dashboard({ onLogout }) {
 
   const rejectRecord = async (id) => {
 
-    try {
+  try {
 
-      await api.post(`reject/${id}/`);
+    await api.post(`reject/${id}/`);
 
-      fetchRecords();
+    fetchRecords();
 
-    } catch (error) {
+  } catch (error) {
 
-      console.error(error);
+    console.error("Reject Error:", error);
 
-    }
-  };
+    alert("Reject failed");
+  }
+};
 
 
   const clearRecords = async () => {
