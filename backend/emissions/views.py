@@ -1,185 +1,9 @@
-import pandas as pd
-
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
-from .models import (
-    Tenant,
-    DataSource,
-    RawRecord,
-    NormalizedRecord,
-    AuditLog
-)
-
+from .models import Tenant, NormalizedRecord
 from .serializers import NormalizedRecordSerializer
+import pandas as pd
 
-from .utils import (
-    normalize_unit,
-    calculate_emissions,
-    detect_suspicious,
-    calculate_travel_emissions  
-
-)
-
-
-# ==============================
-# SAP UPLOAD
-# ==============================
-
-@api_view(['POST'])
-def upload_sap(request):
-
-    file = request.FILES['file']
-
-    df = pd.read_csv(file)
-
-    tenant, created = Tenant.objects.get_or_create(
-        name='Demo Company'
-    )
-
-    source = DataSource.objects.create(
-        tenant=tenant,
-        source_type='SAP'
-    )
-
-    for index, row in df.iterrows():
-
-        RawRecord.objects.create(
-            source=source,
-            raw_payload=row.to_dict()
-        )
-
-        value, unit = normalize_unit(
-            float(row['quantity']),
-            row['unit']
-        )
-
-        emissions = calculate_emissions(
-            value,
-            'fuel'
-        )
-
-        suspicious = detect_suspicious(value)
-
-        NormalizedRecord.objects.create(
-            tenant=tenant,
-            source_type='SAP',
-            category='fuel',
-            scope='Scope 1',
-            activity_value=value,
-            unit=unit,
-            emissions_kg_co2e=emissions,
-            suspicious=suspicious
-        )
-
-    return Response({
-        "message": "SAP uploaded successfully"
-    })
-
-
-# ==============================
-# UTILITY UPLOAD
-# ==============================
-
-@api_view(['POST'])
-def upload_utility(request):
-
-    file = request.FILES['file']
-
-    df = pd.read_csv(file)
-
-    tenant, created = Tenant.objects.get_or_create(
-        name='Demo Company'
-    )
-
-    source = DataSource.objects.create(
-        tenant=tenant,
-        source_type='UTILITY'
-    )
-
-    for index, row in df.iterrows():
-
-        RawRecord.objects.create(
-            source=source,
-            raw_payload=row.to_dict()
-        )
-
-        usage = float(row['usage_kwh'])
-
-        emissions = calculate_emissions(
-            usage,
-            'electricity'
-        )
-
-        suspicious = detect_suspicious(usage)
-
-        NormalizedRecord.objects.create(
-            tenant=tenant,
-            source_type='UTILITY',
-            category='electricity',
-            scope='Scope 2',
-            activity_value=usage,
-            unit='kWh',
-            emissions_kg_co2e=emissions,
-            suspicious=suspicious
-        )
-
-    return Response({
-        "message": "Utility data uploaded successfully"
-    })
-@api_view(['POST'])
-def upload_travel(request):
-
-    file = request.FILES['file']
-
-    df = pd.read_csv(file)
-
-    tenant, created = Tenant.objects.get_or_create(
-        name='Demo Company'
-    )
-
-    source = DataSource.objects.create(
-        tenant=tenant,
-        source_type='TRAVEL'
-    )
-
-    for index, row in df.iterrows():
-
-        RawRecord.objects.create(
-            source=source,
-            raw_payload=row.to_dict()
-        )
-
-        distance = float(row['distance_km'])
-
-        mode = row['transport_mode']
-
-        emissions = calculate_travel_emissions(
-            distance,
-            mode
-        )
-
-        suspicious = detect_suspicious(distance)
-
-        NormalizedRecord.objects.create(
-            tenant=tenant,
-            source_type='TRAVEL',
-            category='business_travel',
-            scope='Scope 3',
-            activity_value=distance,
-            unit='km',
-            emissions_kg_co2e=emissions,
-            suspicious=suspicious
-        )
-
-    return Response({
-        "message": "Travel data uploaded successfully"
-    })
-
-
-# ==============================
-# GET RECORDS
-# ==============================
 
 @api_view(['GET'])
 def get_records(request):
@@ -194,27 +18,109 @@ def get_records(request):
     return Response(serializer.data)
 
 
-# ==============================
-# APPROVE RECORD
-# ==============================
+@api_view(['POST'])
+def upload_sap(request):
+
+    file = request.FILES.get('file')
+
+    if not file:
+
+        return Response(
+            {"error": "No file uploaded"},
+            status=400
+        )
+
+    try:
+
+        df = pd.read_csv(file)
+
+        tenant, _ = Tenant.objects.get_or_create(
+            name="Default Tenant"
+        )
+
+        created_records = []
+
+        for _, row in df.iterrows():
+
+            activity_value = float(row['activity_value'])
+
+            emissions = activity_value * 2.5
+
+            suspicious = emissions > 50000
+
+            record = NormalizedRecord.objects.create(
+
+                tenant=tenant,
+
+                category=row['category'],
+
+                scope=row['scope'],
+
+                activity_value=activity_value,
+
+                unit=row['unit'],
+
+                emissions_kg_co2e=emissions,
+
+                suspicious=suspicious,
+
+                status="PENDING",
+
+                source_type="SAP"
+            )
+
+            created_records.append(record)
+
+        serializer = NormalizedRecordSerializer(
+            created_records,
+            many=True
+        )
+
+        return Response(serializer.data)
+
+    except Exception as e:
+
+        return Response(
+            {"error": str(e)},
+            status=500
+        )
+
+
+@api_view(['POST'])
+def upload_utility(request):
+
+    return upload_sap(request)
+
+
+@api_view(['POST'])
+def upload_travel(request):
+
+    return upload_sap(request)
+
 
 @api_view(['POST'])
 def approve_record(request, pk):
 
-    record = NormalizedRecord.objects.get(id=pk)
+    try:
 
-    record.status = 'APPROVED'
+        record = NormalizedRecord.objects.get(id=pk)
 
-    record.save()
+        record.status = "APPROVED"
 
-    AuditLog.objects.create(
-        record=record,
-        action='Approved'
-    )
+        record.save()
 
-    return Response({
-        "message": "Record approved"
-    })
+        return Response({
+            "message": "Record approved"
+        })
+
+    except NormalizedRecord.DoesNotExist:
+
+        return Response(
+            {"error": "Record not found"},
+            status=404
+        )
+
+
 @api_view(['POST'])
 def reject_record(request, pk):
 
@@ -236,15 +142,13 @@ def reject_record(request, pk):
             {"error": "Record not found"},
             status=404
         )
+
+
 @api_view(['DELETE'])
 def clear_records(request):
 
     NormalizedRecord.objects.all().delete()
 
-    RawRecord.objects.all().delete()
-
-    DataSource.objects.all().delete()
-
     return Response({
-        "message": "All records cleared"
+        "message": "All records deleted"
     })
