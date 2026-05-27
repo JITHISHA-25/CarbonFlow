@@ -50,18 +50,19 @@ function Dashboard({ onLogout }) {
     }
   };
 
-
-  const rejectRecord = async (id) => {
+const rejectRecord = async (id) => {
 
   try {
 
-    await api.post(`reject/${id}/`);
+    const response = await api.post(`reject/${id}/`);
+
+    console.log(response.data);
 
     fetchRecords();
 
   } catch (error) {
 
-    console.error("Reject Error:", error);
+    console.log(error.response);
 
     alert("Reject failed");
   }
@@ -385,7 +386,7 @@ function Dashboard({ onLogout }) {
 
 
                     <button
-                      onClick={() => rejectRecord(r.id)}
+  onClick={() => rejectRecord(record.id)}
                       style={{
                         backgroundColor: "#dc2626",
                         color: "white",
