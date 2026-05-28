@@ -257,27 +257,16 @@ npm run dev
 
 ---
 
-## ESG Dashboard View
-
-![Dashboard2](screenshots/dashboard2.png)
-
----
 
 ## Records Table View 1
 
-![Table1](screenshots/table1.png)
+![Table1](screenshots/table.png)
 
 ---
 
 ## Records Table View 2
 
-![Table2](screenshots/table2.png)
-
----
-
-## Records Table View 3
-
-![Table3](screenshots/table3.png)
+![Table2](screenshots/table1.png)
 
 
 # Future Improvements
