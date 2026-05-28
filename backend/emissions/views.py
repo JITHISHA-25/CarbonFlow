@@ -110,15 +110,16 @@ def approve_record(request, pk):
         record.save()
 
         return Response({
-            "message": "Record approved"
+            "success": True,
+            "message": "Approved successfully"
         })
 
-    except NormalizedRecord.DoesNotExist:
+    except Exception as e:
 
-        return Response(
-            {"error": "Record not found"},
-            status=404
-        )
+        return Response({
+            "success": False,
+            "error": str(e)
+        }, status=500)
 
 
 @api_view(['POST'])
@@ -133,16 +134,16 @@ def reject_record(request, pk):
         record.save()
 
         return Response({
-            "message": "Record rejected"
+            "success": True,
+            "message": "Rejected successfully"
         })
 
-    except NormalizedRecord.DoesNotExist:
+    except Exception as e:
 
-        return Response(
-            {"error": "Record not found"},
-            status=404
-        )
-
+        return Response({
+            "success": False,
+            "error": str(e)
+        }, status=500)
 
 @api_view(['DELETE'])
 def clear_records(request):
